@@ -18,7 +18,7 @@ test( 'image source set', function () {
 
 /*test( 'media query active', function () {
   $(window).resize(320, 320);
-  equal( window.metaQuery.mediaqueries[0].matches, true ); 
+  equal( window.metaQuery.mediaqueries[0].matches, true );
   $(window).resize(500, 500);
   equal( window.metaQuery.mediaqueries[0].matches, false );
 });*/
