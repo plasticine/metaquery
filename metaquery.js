@@ -1,7 +1,7 @@
 (function ( window, document ) {
   var metaQuery = {
     breakpoints: {},
-    _ticking: false,
+    _isTicking: false,
     _namedEvents: {},
     _eventMatchCache: {},
     _globalEvents: [],
@@ -93,15 +93,15 @@
   },
 
   requestMqChange = function() {
-    if( !metaQuery._ticking ) {
+    if( !metaQuery._isTicking ) {
       requestAnimationFrame(mqChange);
     }
-    metaQuery._ticking = true;
+    metaQuery._isTicking = true;
   },
 
   // Called when a media query changes state
   mqChange = function () {
-    metaQuery._ticking = false;
+    metaQuery._isTicking = false;
 
     activeMediaqueries = [];
     for( var name in metaQuery.breakpoints ) {
