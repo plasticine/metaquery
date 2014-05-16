@@ -109,7 +109,7 @@
 
   // Called when a media query changes state
   mqChange = function () {
-    activeMediaqueries = []
+    activeMediaqueries = [];
     for( var name in metaQuery.breakpoints ) {
       var query = metaQuery.breakpoints[name],
           matches = window.matchMedia( query ).matches;
@@ -126,7 +126,7 @@
 
       // store the matching mq
       if ( matches ) {
-        activeMediaqueries = activeMediaqueries.concat(name)
+        activeMediaqueries = activeMediaqueries.concat(name);
       }
 
       updateClasses( matches, name );
