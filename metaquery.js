@@ -1,6 +1,7 @@
 (function ( window, document ) {
   var metaQuery = {
     breakpoints: {},
+    _ticking: false,
     _namedEvents: {},
     _eventMatchCache: {},
     _globalEvents: [],
@@ -36,22 +37,6 @@
     } else {
       element.attachEvent( 'on' + event, fn );
     }
-  },
-
-  debounce = function( func, wait ) {
-    var args,
-        thisArg,
-        timeoutId;
-
-    function delayed() {
-      timeoutId = null;
-      func.apply( thisArg, args );
-    }
-
-    return function() {
-      window.clearTimeout( timeoutId );
-      timeoutId = window.setTimeout( delayed, wait );
-    };
   },
 
   hasClass = function( element, className ) {
@@ -107,8 +92,17 @@
     }
   },
 
+  requestMqChange = function() {
+    if( !metaQuery._ticking ) {
+      requestAnimationFrame(mqChange);
+    }
+    metaQuery._ticking = true;
+  },
+
   // Called when a media query changes state
   mqChange = function () {
+    metaQuery._ticking = false;
+
     activeMediaqueries = [];
     for( var name in metaQuery.breakpoints ) {
       var query = metaQuery.breakpoints[name],
@@ -134,7 +128,9 @@
     }
 
     // call any global events
-    callGlobalEvents( activeMediaqueries );
+    if ( activeMediaqueries.length !== 0 ) {
+      callGlobalEvents( activeMediaqueries );
+    };
   },
 
   collectMediaQueries = function () {
@@ -164,9 +160,7 @@
   onDomReady = function () {
     collectMediaQueries();
 
-    addEvent( window, 'resize', debounce( function () {
-      mqChange();
-    }, 50 ));
+    addEvent( window, 'resize', requestMqChange);
 
     mqChange();
   };
