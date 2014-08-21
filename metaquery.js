@@ -1,11 +1,15 @@
 (function ( window, document ) {
+  "use strict";
+
   var metaQuery = {
     breakpoints: {},
+    _isTicking: false,
+    _debounceLastTime: 0,
     _namedEvents: {},
     _eventMatchCache: {},
     _globalEvents: [],
     onBreakpointChange: function () {
-      var args = Array.prototype.slice.call(arguments),
+      var args = Array.prototype.slice.call( arguments ),
             fn = args.pop(),
             name = args.pop();
 
@@ -23,53 +27,25 @@
   readyState = function ( fn ) {
     if ( /in/.test( document.readyState ) ) {
       window.setTimeout( function () {
-       readyState( fn );
+        readyState( fn );
       }, 9 );
     } else {
       fn();
     }
   },
 
-  addEvent = function ( element, event, fn ) {
-    if ( document.addEventListener ) {
-      element.addEventListener( event, fn );
-    } else {
-      element.attachEvent( 'on' + event, fn );
-    }
-  },
-
-  debounce = function( func, wait ) {
-    var args,
-        thisArg,
-        timeoutId;
-
-    function delayed() {
-      timeoutId = null;
-      func.apply( thisArg, args );
-    }
-
-    return function() {
-      window.clearTimeout( timeoutId );
-      timeoutId = window.setTimeout( delayed, wait );
-    };
-  },
-
-  hasClass = function( element, className ) {
-    return element.className.split(' ').indexOf( className ) !== -1;
-  },
-
   removeClass = function( element, className ) {
     var classes = element.className.split( ' ' ),
-        id = classes.indexOf( className );
+        index = classes.indexOf( className );
 
-    if ( hasClass( element, className ) ) {
-      classes.splice( id, 1 );
+    if ( index > -1 ) {
+      classes.splice( index, 1 );
       element.className = classes.join( ' ' );
     }
   },
 
   addClass = function(element, className) {
-    if ( !hasClass( element, className ) ) {
+    if ( element.className.indexOf(className) === -1 ) {
       element.className = ( element.className !== '' ) ? ( element.className + ' ' + className ) : className;
     }
   },
@@ -85,23 +61,41 @@
     }
   },
 
-  updateElements = function ( matches, name ) {
-    if ( !matches ) { return; }
+  callGlobalEvents = function( activeBreakpoints ) {
+    metaQuery._globalEvents.forEach(function(gfn) {
+      if ( typeof gfn === 'function' ) { gfn(activeBreakpoints); }
+    });
+  },
 
-    var elements = document.getElementsByTagName( 'img' );
+  requestMqChange = function() {
+    if( !metaQuery._isTicking ) {
+      requestAnimationFrame( mqChange );
+    }
+    metaQuery._isTicking = true;
+  },
 
-    for ( var i = 0; i < elements.length; i++ ) {
-      var el = elements[i],
-          template = el.getAttribute( 'data-mq-src' );
+  // A rAF fallback, adapted from https://gist.github.com/paulirish/1579671
+  requestAnimationFrame = function( callback, element ) {
+    if ( window.requestAnimationFrame ) {
+      window.requestAnimationFrame( callback, element );
+    } else {
+      var currTime = new Date().getTime();
+      var timeToCall = Math.max( 0, 16 - ( currTime - metaQuery._debounceLastTime ) );
+      var id = window.setTimeout(function () {
+        callback( currTime + timeToCall );
+      }, timeToCall );
 
-      if ( template ) {
-        el.src = template.replace( '[breakpoint]', name );
-      }
+      metaQuery._debounceLastTime = currTime + timeToCall;
+
+      return id;
     }
   },
 
   // Called when a media query changes state
   mqChange = function () {
+    metaQuery._isTicking = false;
+    var activeBreakpoints = [];
+
     for( var name in metaQuery.breakpoints ) {
       var query = metaQuery.breakpoints[name],
           matches = window.matchMedia( query ).matches;
@@ -114,19 +108,19 @@
 
           if ( typeof fn === 'function' ) { fn( matches ); }
         }
-
       }
 
-      // call any global events
+      // store the matching mq
       if ( matches ) {
-        for ( var j = 0; j < metaQuery._globalEvents.length; j++ ) {
-          var gfn = metaQuery._globalEvents[j];
-          if ( typeof gfn === 'function' ) { gfn(); }
-        }
+        activeBreakpoints.push( name );
       }
 
       updateClasses( matches, name );
-      updateElements( matches, name );
+    }
+
+    // call any global events
+    if ( activeBreakpoints.length !== 0 ) {
+      callGlobalEvents( activeBreakpoints );
     }
   },
 
@@ -156,17 +150,17 @@
   // are in the DOM.
   onDomReady = function () {
     collectMediaQueries();
-
-    addEvent( window, 'resize', debounce( function () {
-      mqChange();
-    }, 50 ));
-
     mqChange();
+    window.addEventListener( 'resize', requestMqChange );
   };
 
-  window.metaQuery = metaQuery;
+  if ( typeof module !== 'undefined' && module.exports ) {
+    module.exports = metaQuery;
+  } else {
+    window.metaQuery = metaQuery;
+  }
 
   preDomReady();
   readyState( onDomReady );
 
-}( this, this.document ));
+}( window, document ));
